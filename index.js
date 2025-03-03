@@ -14,10 +14,10 @@ const path = require("path");
 const authenticateToken = require("./api/utilis");
 
 
-
-mongoose.connect(config.connectionString)
+mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("DB connected"))
   .catch((err) => console.error("DB connection error:", err));
+
 
 const app = express();
 app.use(express.json());
