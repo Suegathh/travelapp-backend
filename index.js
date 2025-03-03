@@ -20,11 +20,23 @@ mongoose.connect(process.env.MONGO_URI)
 
 const app = express();
 app.use(express.json());
+
+// Allow requests from your frontend and handle preflight requests
 app.use(cors({
-  origin: "https://travelapp-frontend-rho.vercel.app", // Allow only your frontend
-  methods: "GET,POST,PUT,DELETE",
+  origin: "*", // Allow all origins (for testing)
+  methods: "GET,POST,PUT,DELETE,OPTIONS",
   allowedHeaders: "Content-Type,Authorization"
 }));
+
+// Handle OPTIONS method for CORS preflight
+app.options("*", cors());
+
+
+// Ensure 'uploads' directory exists
+const uploadDir = './uploads';
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir);
+}
 
 app.post("/create-account", async (req, res) => {
   const { fullName, email, password } = req.body;
@@ -438,5 +450,10 @@ app.get("/travel-stories/filter", authenticateToken, async (req, res) => {
 app.listen(8000, () => {
   console.log("Server is running on port 8000");
 });
+app.get('/', (req, res) => {
+  res.send('Backend is running!');
+});
+
+
 
 module.exports = app;
