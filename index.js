@@ -20,7 +20,11 @@ mongoose.connect(process.env.MONGO_URI)
 
 const app = express();
 app.use(express.json());
-app.use(cors({ origin: "*" }));
+app.use(cors({
+  origin: "https://travelapp-frontend-rho.vercel.app", // Allow only your frontend
+  methods: "GET,POST,PUT,DELETE",
+  allowedHeaders: "Content-Type,Authorization"
+}));
 
 app.post("/create-account", async (req, res) => {
   const { fullName, email, password } = req.body;
