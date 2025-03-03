@@ -127,21 +127,22 @@ app.get("/get-user", authenticateToken, async (req, res) => {
   }
 });
 
+const BASE_URL = process.env.BASE_URL || "http://localhost:8000"; // Use env variable
+
 app.post("/image-upload", upload.single("image"), async (req, res) => {
   try {
-    if (!req.file){
-      return res
-      .status(400)
-      .json({error: true, message: "No image uploaded"})
+    if (!req.file) {
+      return res.status(400).json({ error: true, message: "No image uploaded" });
     }
 
-    const imageUrl = `http://localhost:8000/uploads/${req.file.filename}`;
+    const imageUrl = `${BASE_URL}/uploads/${req.file.filename}`; // Use dynamic base URL
 
-    res.status(200).json({ imageUrl })
+    res.status(200).json({ imageUrl });
   } catch (error) {
-    res.status(500).json({error: true, message: error.message })
+    res.status(500).json({ error: true, message: error.message });
   }
 });
+
 
 app.delete("/delete-image", async (req, res) =>{
  const { imageUrl } = req.query;
