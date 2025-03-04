@@ -7,15 +7,35 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const User = require("./api/models/user.model");
 const TravelStory = require("./api/models/travelStory");
-const upload = require("./api/multer");
-const fs = require("fs");
 const path = require("path");
 const authenticateToken = require("./api/utilis");
+const multer = require("multer");
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const cloudinary = require("cloudinary").v2;
+
 
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("DB connected"))
   .catch((err) => console.error("DB connection error:", err));
+
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "travel-stories", // Organize images in Cloudinary
+    format: async () => "png", // Change format if needed
+    public_id: (req, file) => Date.now() + "-" + file.originalname,
+  },
+});
+
+const upload = multer({ storage });
 
 
 const app = express();
@@ -32,11 +52,6 @@ app.use(cors({
 app.options("*", cors());
 
 
-// Ensure 'uploads' directory exists
-const uploadDir = './uploads';
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir);
-}
 
 app.post("/create-account", async (req, res) => {
   const { fullName, email, password } = req.body;
@@ -143,29 +158,16 @@ const BASE_URL = process.env.BASE_URL || "http://localhost:8000"; // Use env var
 
 app.post("/image-upload", upload.single("image"), async (req, res) => {
   try {
-    if (!req.file) {
+    if (!req.file || !req.file.path) {
       return res.status(400).json({ error: true, message: "No image uploaded" });
     }
 
-    // Cloudinary automatically provides a secure URL
-    const imageUrl = req.file.path; // Cloudinary URL
-
-    res.status(200).json({ imageUrl });
+    res.status(200).json({ imageUrl: req.file.path }); // Cloudinary URL
   } catch (error) {
     res.status(500).json({ error: true, message: error.message });
   }
 });
 
-
-
-const cloudinary = require("cloudinary").v2;
-
-// Cloudinary config (make sure these are set in your environment variables)
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
 
 app.delete("/delete-image", async (req, res) => {
   const { imageUrl } = req.query;
@@ -190,7 +192,6 @@ app.delete("/delete-image", async (req, res) => {
 });
 
 
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/assets", express.static(path.join(__dirname, "assets")));
 
 app.post("/add-travel-story", authenticateToken, async (req, res) => {
@@ -300,15 +301,7 @@ app.delete("/delete-story/:id", authenticateToken, async (req, res) => {
     await travelStory.deleteOne({_id: id, userId: userId})
 
     const imageUrl = travelStory.imageUrl;
-    const filename = path.basename(imageUrl)
 
-    const filePath = path.join(__dirname, 'uploads', filename)
-
-    fs.unlink(filePath, (err) => {
-      if(err){
-        console.log("Failed to delete image file:", err)
-      }
-    })
     res.status(200).json({message: "Travel story deleted successfully"})
   } catch (error) {
     res.status(500).json({error: true, message: error.message})
