@@ -147,7 +147,8 @@ app.post("/image-upload", upload.single("image"), async (req, res) => {
       return res.status(400).json({ error: true, message: "No image uploaded" });
     }
 
-    const imageUrl = `${BASE_URL}/uploads/${req.file.filename}`; // Use dynamic base URL
+    // Cloudinary automatically provides a secure URL
+    const imageUrl = req.file.path; // Cloudinary URL
 
     res.status(200).json({ imageUrl });
   } catch (error) {
@@ -156,34 +157,38 @@ app.post("/image-upload", upload.single("image"), async (req, res) => {
 });
 
 
-app.delete("/delete-image", async (req, res) =>{
- const { imageUrl } = req.query;
 
- if(!imageUrl){
-  return res
-  .status(400)
-  .json({error: true, message: "ImageUrl parameter is required"})
- }
- try {
-  //extract filename from imageurl
-  const filename = path.basename(imageUrl);
+const cloudinary = require("cloudinary").v2;
 
-  //define file path
-  const filePath = path.join(__dirname, 'uploads', filename);
+// Cloudinary config (make sure these are set in your environment variables)
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
-  //check if file exists
-  if(fs.existsSync(filePath)){
-    //delete file from uploads folder
-    fs.unlinkSync(filePath);
-    res.status(200).json({message: "Image deleted successfully"}) 
-  }else{
-    res.status(404).json({error: true, message: "Image not found"})
+app.delete("/delete-image", async (req, res) => {
+  const { imageUrl } = req.query;
+
+  if (!imageUrl) {
+    return res
+      .status(400)
+      .json({ error: true, message: "ImageUrl parameter is required" });
   }
 
- } catch (error) {
-   res.status(500).json({error: true, message: error.message})
- }
-})
+  try {
+    // Extract the public ID from the Cloudinary URL
+    const publicId = imageUrl.split("/").pop().split(".")[0];
+
+    // Delete the image from Cloudinary
+    await cloudinary.uploader.destroy(publicId);
+
+    res.status(200).json({ message: "Image deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: true, message: error.message });
+  }
+});
+
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/assets", express.static(path.join(__dirname, "assets")));
